@@ -12,5 +12,6 @@ Python-based &amp; JS/Probot based API protocols for GitHub/signal-k &amp; githu
 ## Example
 * App name: rpherokumain1 [pushing error](https://stackoverflow.com/questions/18406721/heroku-does-not-appear-to-be-a-git-repository)
     * Staging: `rpherokumain1-staging1` 
+    Branch: herokumain
 
 ```git push heroku master```
