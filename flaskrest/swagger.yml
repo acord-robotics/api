@@ -32,3 +32,12 @@ paths:
                   type: "string"
                 timestamp:
                   type: "string"
+                  
+#- `swagger:` tells Connexion what version of the Swagger API is being used
+#- `info:` begins a new ‘scope’ of information about the API being built
+#- `description:` a user defined description of what the API provides or is about. This is in the Connexion generated UI system
+#- `version:` a user defined version value for the API
+#- `title:` a user defined title included in the Connexion generated UI system
+#- `consumes:` tells Connexion what [MIME type](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types) is expected by the API.
+#- `produces:` tells Connexion what content type is expected by the caller of the API.
+#- `basePath: "/api"` defines the root of the API, kind of like a [namespace](https://realpython.com/python-namespaces-scope/) the REST API will come from.
