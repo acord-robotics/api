@@ -1,17 +1,29 @@
+"""
+Main module of the server file
+"""
+
+# 3rd party moudles
 from flask import render_template
 import connexion
 
-# Application instance
-app = connexion.App(__name__, specification_dir='./') # current directory
 
-# Read swagger.yml file to configure endpoints
-app.add_api('swagger.yml')
+# create the application instance
+app = connexion.App(__name__, specification_dir="./")
 
-# Views/Pages
-@app.route('/') # Root url page
+# Cead the swagger.yml file to configure the endpoints
+app.add_api("swagger.yml")
+
+
+# Create a URL route in our application for "/"
+@app.route("/")
 def home():
-    return render_template('home.html')
+    """
+    This function just responds to the browser URL
+    localhost:5000/
+    :return:        the rendered template "home.html"
+    """
+    return render_template("home.html")
 
-if __name__ == '__main__': # Run the application if running in standalone mode
-    app.run(host='0.0.0.0', port=5000, debug=True)
 
+if __name__ == "__main__":
+    app.run(debug=True)
