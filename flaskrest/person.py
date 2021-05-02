@@ -37,7 +37,7 @@ def create(person): # Create a person in the database
         .filter(Person.fname == fname) \
         .filter(Person.lname == lname) \
         .one_or_none()
-
+ 
     if existing_person is None:
         schema = PersonSchema()
         new_person = schema.load(person, session=db.session).data
