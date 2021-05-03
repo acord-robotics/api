@@ -21,7 +21,7 @@ class FlaskApp(AbstractApp):
         super(FlaskApp, self).__init__(import_name, FlaskApi, server=server, **kwargs)
 
     def create_app(self):
-        app = flask.Flask(self.import_name, **self.server_args)
+        app = flask.Flask(self.import_name)
         app.json_encoder = FlaskJSONEncoder
         return app
 
@@ -40,10 +40,7 @@ class FlaskApp(AbstractApp):
         :type exception: Exception
         """
         if isinstance(exception, ProblemException):
-            response = problem(
-                status=exception.status, title=exception.title, detail=exception.detail,
-                type=exception.type, instance=exception.instance, headers=exception.headers,
-                ext=exception.ext)
+            response = exception.to_problem()
         else:
             if not isinstance(exception, werkzeug.exceptions.HTTPException):
                 exception = werkzeug.exceptions.InternalServerError()

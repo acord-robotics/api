@@ -68,7 +68,7 @@ class Swagger2Operation(AbstractOperation):
         :param pythonic_params: When True CamelCase parameters are converted to snake_case and an underscore is appended
         to any shadowed built-ins
         :type pythonic_params: bool
-        :param uri_parser_class: class to use for uri parsing
+        :param uri_parser_class: class to use for uri parseing
         :type uri_parser_class: AbstractURIParser
         :param pass_context_arg_name: If not None will try to inject the request context to the function using this
         name.
@@ -180,8 +180,6 @@ class Swagger2Operation(AbstractOperation):
         status_code = status_code or sorted(self._responses.keys())[0]
         examples_path = [str(status_code), 'examples']
         schema_example_path = [str(status_code), 'schema', 'example']
-        schema_path = [str(status_code), 'schema']
-
         try:
             status_code = int(status_code)
         except ValueError:
@@ -197,30 +195,7 @@ class Swagger2Operation(AbstractOperation):
             return (deep_get(self._responses, schema_example_path),
                     status_code)
         except KeyError:
-            pass
-
-        try:
-            return (self._nested_example(deep_get(self._responses, schema_path)),
-                    status_code)
-        except KeyError:
             return (None, status_code)
-
-    def _nested_example(self, schema):
-        try:
-            return schema["example"]
-        except KeyError:
-            pass
-        try:
-            # Recurse if schema is an object
-            return {key: self._nested_example(value)
-                    for (key, value) in schema["properties"].items()}
-        except KeyError:
-            pass
-        try:
-            # Recurse if schema is an array
-            return [self._nested_example(schema["items"])]
-        except KeyError:
-            raise
 
     @property
     def body_schema(self):

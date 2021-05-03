@@ -2,9 +2,8 @@
 import abc
 import functools
 import logging
-import re
-import json
-from .. import utils
+
+import six
 
 from .decorator import BaseDecorator
 
@@ -18,7 +17,8 @@ QUERY_STRING_DELIMITERS = {
 }
 
 
-class AbstractURIParser(BaseDecorator, metaclass=abc.ABCMeta):
+@six.add_metaclass(abc.ABCMeta)
+class AbstractURIParser(BaseDecorator):
     parsable_parameters = ["query", "path"]
 
     def __init__(self, param_defns, body_defn):
@@ -98,7 +98,6 @@ class AbstractURIParser(BaseDecorator, metaclass=abc.ABCMeta):
         for k, values in params.items():
             param_defn = self.param_defns.get(k)
             param_schema = self.param_schemas.get(k)
-
             if not (param_defn or param_schema):
                 # rely on validation
                 resolved_param[k] = values
@@ -175,43 +174,9 @@ class OpenAPIURIParser(AbstractURIParser):
                 self._resolve_param_duplicates(form_data[k], encoding, 'form')
             if defn and defn["type"] == "array":
                 form_data[k] = self._split(form_data[k], encoding, 'form')
-            elif 'contentType' in encoding and utils.all_json([encoding.get('contentType')]):
-                form_data[k] = json.loads(form_data[k])
         return form_data
 
-    @staticmethod
-    def _make_deep_object(k, v):
-        """ consumes keys, value pairs like (a[foo][bar], "baz")
-            returns (a, {"foo": {"bar": "baz"}}}, is_deep_object)
-        """
-        root_key = k.split("[", 1)[0]
-        if k == root_key:
-            return (k, v, False)
-        key_path = re.findall(r'\[([^\[\]]*)\]', k)
-        root = prev = node = {}
-        for k in key_path:
-            node[k] = {}
-            prev = node
-            node = node[k]
-        prev[k] = v[0]
-        return (root_key, [root], True)
-
-    def _preprocess_deep_objects(self, query_data):
-        """ deep objects provide a way of rendering nested objects using query
-            parameters.
-        """
-        deep = [self._make_deep_object(k, v) for k, v in query_data.items()]
-        root_keys = [k for k, v, is_deep_object in deep]
-        ret = dict.fromkeys(root_keys, [{}])
-        for k, v, is_deep_object in deep:
-            if is_deep_object:
-                ret[k] = [utils.deep_merge(v[0], ret[k][0])]
-            else:
-                ret[k] = v
-        return ret
-
     def resolve_query(self, query_data):
-        query_data = self._preprocess_deep_objects(query_data)
         return self.resolve_params(query_data, 'query')
 
     def resolve_path(self, path_data):

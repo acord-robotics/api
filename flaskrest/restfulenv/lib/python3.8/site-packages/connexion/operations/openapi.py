@@ -1,10 +1,10 @@
 import logging
-from copy import copy, deepcopy
+from copy import deepcopy
 
 from connexion.operations.abstract import AbstractOperation
 
 from ..decorators.uri_parsing import OpenAPIURIParser
-from ..utils import deep_get, deep_merge, is_null, is_nullable, make_type
+from ..utils import deep_get, is_null, is_nullable, make_type
 
 logger = logging.getLogger("connexion.operations.openapi3")
 
@@ -54,7 +54,7 @@ class OpenAPIOperation(AbstractOperation):
         :param pythonic_params: When True CamelCase parameters are converted to snake_case and an underscore is appended
         to any shadowed built-ins
         :type pythonic_params: bool
-        :param uri_parser_class: class to use for uri parsing
+        :param uri_parser_class: class to use for uri parseing
         :type uri_parser_class: AbstractURIParser
         :param pass_context_arg_name: If not None will try to inject the request context to the function using this
         name.
@@ -182,7 +182,6 @@ class OpenAPIOperation(AbstractOperation):
         schema_example_path = [
             str(status_code), 'content', content_type, 'schema', 'example'
         ]
-        schema_path = [str(status_code), 'content', content_type, 'schema']
 
         try:
             status_code = int(status_code)
@@ -191,7 +190,7 @@ class OpenAPIOperation(AbstractOperation):
         try:
             # TODO also use example header?
             return (
-                list(deep_get(self._responses, examples_path).values())[0]['value'],
+                list(deep_get(self._responses, examples_path).values())[0],
                 status_code
             )
         except (KeyError, IndexError):
@@ -204,30 +203,7 @@ class OpenAPIOperation(AbstractOperation):
             return (deep_get(self._responses, schema_example_path),
                     status_code)
         except KeyError:
-            pass
-
-        try:
-            return (self._nested_example(deep_get(self._responses, schema_path)),
-                    status_code)
-        except KeyError:
             return (None, status_code)
-
-    def _nested_example(self, schema):
-        try:
-            return schema["example"]
-        except KeyError:
-            pass
-        try:
-            # Recurse if schema is an object
-            return {key: self._nested_example(value)
-                    for (key, value) in schema["properties"].items()}
-        except KeyError:
-            pass
-        try:
-            # Recurse if schema is an array
-            return [self._nested_example(schema["items"])]
-        except KeyError:
-            raise
 
     def get_path_parameter_types(self):
         types = {}
@@ -268,12 +244,12 @@ class OpenAPIOperation(AbstractOperation):
         return {}
 
     def _get_body_argument(self, body, arguments, has_kwargs, sanitize):
-        x_body_name = sanitize(self.body_schema.get('x-body-name', 'body'))
+        x_body_name = self.body_schema.get('x-body-name', 'body')
         if is_nullable(self.body_schema) and is_null(body):
             return {x_body_name: None}
 
         default_body = self.body_schema.get('default', {})
-        body_props = {k: {"schema": v} for k, v
+        body_props = {sanitize(k): {"schema": v} for k, v
                       in self.body_schema.get("properties", {}).items()}
 
         # by OpenAPI specification `additionalProperties` defaults to `true`
@@ -293,27 +269,25 @@ class OpenAPIOperation(AbstractOperation):
 
         res = {}
         if body_props or additional_props:
-            res = self._get_typed_body_values(body_arg, body_props, additional_props)
+            res = self._sanitize_body_argument(body_arg, body_props, additional_props, sanitize)
 
         if x_body_name in arguments or has_kwargs:
             return {x_body_name: res}
         return {}
 
-    def _get_typed_body_values(self, body_arg, body_props, additional_props):
+    def _sanitize_body_argument(self, body_arg, body_props, additional_props, sanitize):
         """
-        Return a copy of the provided body_arg dictionary
-        whose values will have the appropriate types
-        as defined in the provided schemas.
-
         :type body_arg: type dict
         :type body_props: dict
         :type additional_props: dict|bool
+        :type sanitize: types.FunctionType
         :rtype: dict
         """
         additional_props_defn = {"schema": additional_props} if isinstance(additional_props, dict) else None
         res = {}
 
         for key, value in body_arg.items():
+            key = sanitize(key)
             try:
                 prop_defn = body_props[key]
                 res[key] = self._get_val_from_param(value, prop_defn)
@@ -327,44 +301,16 @@ class OpenAPIOperation(AbstractOperation):
 
         return res
 
-    def _build_default_obj_recursive(self, _properties, res):
-        """ takes disparate and nested default keys, and builds up a default object
-        """
-        for key, prop in _properties.items():
-            if 'default' in prop and key not in res:
-                res[key] = copy(prop['default'])
-            elif prop.get('type') == 'object' and 'properties' in prop:
-                res.setdefault(key, {})
-                res[key] = self._build_default_obj_recursive(prop['properties'], res[key])
-        return res
-
-    def _get_default_obj(self, schema):
-        try:
-            return deepcopy(schema["default"])
-        except KeyError:
-            _properties = schema.get("properties", {})
-            return self._build_default_obj_recursive(_properties, {})
-
-    def _get_query_defaults(self, query_defns):
-        defaults = {}
-        for k, v in query_defns.items():
-            try:
-                if v["schema"]["type"] == "object":
-                    defaults[k] = self._get_default_obj(v["schema"])
-                else:
-                    defaults[k] = v["schema"]["default"]
-            except KeyError:
-                pass
-        return defaults
-
     def _get_query_arguments(self, query, arguments, has_kwargs, sanitize):
         query_defns = {sanitize(p["name"]): p
                        for p in self.parameters
                        if p["in"] == "query"}
-        default_query_params = self._get_query_defaults(query_defns)
+        default_query_params = {k: v["schema"]['default']
+                                for k, v in query_defns.items()
+                                if 'default' in v["schema"]}
 
         query_arguments = deepcopy(default_query_params)
-        query_arguments = deep_merge(query_arguments, query)
+        query_arguments.update(query)
         return self._query_args_helper(query_defns, query_arguments,
                                        arguments, has_kwargs, sanitize)
 

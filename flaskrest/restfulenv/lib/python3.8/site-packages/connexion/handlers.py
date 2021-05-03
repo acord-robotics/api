@@ -1,7 +1,7 @@
 import logging
 
 from .operations.secure import SecureOperation
-from .exceptions import AuthenticationProblem, ResolverProblem
+from .problem import problem
 
 logger = logging.getLogger('connexion.handlers')
 
@@ -45,11 +45,12 @@ class AuthErrorHandler(SecureOperation):
         """
         Actual handler for the execution after authentication.
         """
-        raise AuthenticationProblem(
+        response = problem(
             title=self.exception.name,
             detail=self.exception.description,
             status=self.exception.code
         )
+        return self.api.get_response(response)
 
 
 class ResolverErrorHandler(SecureOperation):
@@ -67,11 +68,12 @@ class ResolverErrorHandler(SecureOperation):
         return self.handle
 
     def handle(self, *args, **kwargs):
-        raise ResolverProblem(
+        response = problem(
             title='Not Implemented',
             detail=self.exception.reason,
             status=self.status_code
         )
+        return self.api.get_response(response)
 
     @property
     def operation_id(self):

@@ -2,16 +2,19 @@ import abc
 import logging
 import pathlib
 
+import six
+
 from ..options import ConnexionOptions
 from ..resolver import Resolver
 
 logger = logging.getLogger('connexion.app')
 
 
-class AbstractApp(metaclass=abc.ABCMeta):
+@six.add_metaclass(abc.ABCMeta)
+class AbstractApp(object):
     def __init__(self, import_name, api_cls, port=None, specification_dir='',
-                 host=None, server=None, server_args=None, arguments=None, auth_all_paths=False, debug=None,
-                 resolver=None, options=None, skip_error_handlers=False):
+                 host=None, server=None, arguments=None, auth_all_paths=False, debug=False,
+                 resolver=None, options=None):
         """
         :param import_name: the name of the application package
         :type import_name: str
@@ -23,8 +26,6 @@ class AbstractApp(metaclass=abc.ABCMeta):
         :type specification_dir: pathlib.Path | str
         :param server: which wsgi server to use
         :type server: str | None
-        :param server_args: dictionary of arguments which are then passed to appropriate http server (Flask or aio_http)
-        :type server_args: dict | None
         :param arguments: arguments to replace on the specification
         :type arguments: dict | None
         :param auth_all_paths: whether to authenticate not defined paths
@@ -47,9 +48,8 @@ class AbstractApp(metaclass=abc.ABCMeta):
 
         self.options = ConnexionOptions(options)
 
-        self.server = server
-        self.server_args = dict() if server_args is None else server_args
         self.app = self.create_app()
+        self.server = server
 
         # we get our application root path to avoid duplicating logic
         self.root_path = self.get_root_path()
@@ -63,9 +63,8 @@ class AbstractApp(metaclass=abc.ABCMeta):
 
         logger.debug('Specification directory: %s', self.specification_dir)
 
-        if not skip_error_handlers:
-            logger.debug('Setting error handlers')
-            self.set_errors_handlers()
+        logger.debug('Setting error handlers')
+        self.set_errors_handlers()
 
     @abc.abstractmethod
     def create_app(self):
